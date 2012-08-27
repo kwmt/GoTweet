@@ -6,7 +6,7 @@ import (
 	"github.com/mrjones/oauth"
 	"io"
 	"io/ioutil"
-	"json"
+	"encoding/json"
 	"log"
 	"os"
 )
@@ -83,7 +83,7 @@ func main() {
 	io.Copy(os.Stdout, resp.Body)
 }
 
-func readToken(token interface{}, filename string) os.Error {
+func readToken(token interface{}, filename string) error {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func readToken(token interface{}, filename string) os.Error {
 	return json.Unmarshal(b, token)
 }
 
-func writeToken(token interface{}, filename string) os.Error {
+func writeToken(token interface{}, filename string) error {
 	b, err := json.Marshal(token)
 	if err != nil {
 		return err
