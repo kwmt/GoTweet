@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="tl">
+<table>
+{{range .}}
+<tr>
+<td>
+日時：{{.Created_at}}<br/>
+ツイート：{{.Text}} <br/>
+スクリーン名：{{.User.Screen_name}}
+</td>
+</tr>
+{{end}}
+</div>
+{{end}}
+

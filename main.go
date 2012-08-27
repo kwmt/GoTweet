@@ -4,11 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"github.com/mrjones/oauth"
-	"io"
-	"io/ioutil"
+	//	"io"
 	"encoding/json"
+	"io/ioutil"
 	"log"
-	"os"
+	//	"os"
+	"html/template"
+	"net/http"
 )
 
 var (
@@ -25,7 +27,26 @@ var provider = oauth.ServiceProvider{
 	AccessTokenUrl:    "https://api.twitter.com/oauth/access_token",
 }
 
-func main() {
+// 取得したいパラメータをstructで記述
+// 参考 https://dev.twitter.com/docs/api/1/get/statuses/mentions
+type TweetObject struct {
+	Created_at              string
+	Id_str                  string
+	Text                    string
+	Source                  string
+//	In_reply_to_user_id_str string
+	User                    UserObject // JSONオブジェクト内のオブジェクトをこのように定義する。
+}
+
+// JSONオブジェク内のオブジェクト
+type UserObject struct {
+	Id_str      string
+	Name        string
+	Screen_name string
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	//fmt.Fprint(w, "Hello, world")
 	flag.Parse()
 	if *clientid == "" || *clientsecret == "" {
 		flag.Usage()
@@ -74,13 +95,46 @@ func main() {
 	}
 
 	const url = "http://api.twitter.com/1/statuses/mentions.json"
+	//	const url = "http://api.twitter.com/1/statuses/user_timeline.json"
 	log.Print("GET ", url)
 	resp, err := consumer.Get(url, nil, &atoken)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
 	}
-	defer resp.Body.Close()
-	io.Copy(os.Stdout, resp.Body)
+	//defer resp.Body.Close()
+	//io.Copy(os.Stdout, resp.Body)
+
+	w.Header().Add("Content-type", "text/html charset=utf-8")
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+
+	var tweets []TweetObject
+//	fmt.Fprintf(w, "%d%T\n", tweets,tweets)
+//	fmt.Fprintf(w, "%d%T\n", body,body)
+	
+	err2 := json.Unmarshal(body,&tweets)
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusInternalServerError)
+		log.Fatalln(err2)
+		return
+	}
+
+	t, err := template.ParseFiles("template/main.html", "template/tweet.html", "template/sub.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	t.Execute(w, tweets)
+
+}
+func main() {
+	http.HandleFunc("/", handler)
+	http.ListenAndServe(":8080", nil)
+
 }
 
 func readToken(token interface{}, filename string) error {
@@ -98,3 +152,17 @@ func writeToken(token interface{}, filename string) error {
 	}
 	return ioutil.WriteFile(filename, b, 0666)
 }
+
+/*
+1. go run main.go -id="<client id>" -secret="<secret id>"
+2012/08/27 14:09:13 Getting Request Token
+Visit this URL: https://api.twitter.com/oauth/authorize?oauth_token=<トークン>
+Then run this program again with -code=CODE
+where CODE is the verification PIN provided by Twitter.
+
+2.  取得した下記のURLにアクセスして、PINを取得
+https://api.twitter.com/oauth/authorize?oauth_token=<トークン>
+
+3. 1に -code="<取得したPIN>" を追加して実行
+すると、標準出力にツイートが出力される。
+*/
