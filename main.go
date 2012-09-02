@@ -10,7 +10,9 @@ import (
 	"log"
 	//	"os"
 	"html/template"
+        "net"
 	"net/http"
+        "net/http/fcgi"
 )
 
 var (
@@ -54,6 +56,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
 
+//	consumer.Debug(true)
+
 	var atoken oauth.AccessToken
 	err := readToken(&atoken, *atokenfile)
 	if err != nil {
@@ -64,7 +68,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Print("Couldn't read token:", err)
 			log.Print("Getting Request Token")
-			rtoken, url, err := consumer.GetRequestTokenAndUrl("oob")
+			rtoken, url, err := consumer.GetRequestTokenAndUrl("http://localhost/app/callback")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -75,12 +79,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Visit this URL:", url)
 			fmt.Println("Then run this program again with -code=CODE")
 			fmt.Println("where CODE is the verification PIN provided by Twitter.")
+			http.Redirect(w,r,url,http.StatusFound)
 			return
 		}
 
 		log.Print("Getting Access Token")
+		fmt.Println("(3) Enter that verification code here: ")
+		//*code =""
+		//fmt.Scanln(&code)
 		if *code == "" {
 			fmt.Println("You must supply a -code parameter to get an Access Token.")
+			
 			return
 		}
 		tok, err := consumer.AuthorizeToken(&rtoken, *code)
@@ -94,8 +103,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		atoken = *tok
 	}
 
-	const url = "http://api.twitter.com/1/statuses/mentions.json"
-	//	const url = "http://api.twitter.com/1/statuses/user_timeline.json"
+//	const url = "http://api.twitter.com/1/statuses/mentions.json"
+	const url = "http://api.twitter.com/1/statuses/user_timeline.json"
 	log.Print("GET ", url)
 	resp, err := consumer.Get(url, nil, &atoken)
 	if err != nil {
@@ -131,10 +140,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, tweets)
 
 }
-func main() {
-	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8080", nil)
 
+func callback(w http.ResponseWriter, r *http.Request){
+	*code = r.FormValue("oauth_verifier")
+	http.Redirect(w,r,"/app",http.StatusMovedPermanently)
+	return
+}
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/app/", handler)
+	mux.HandleFunc("/app/callback",callback)
+	l, _:= net.Listen("tcp", ":9000")
+	if l == nil {
+		fmt.Println("listener is nil")
+		return
+	}
+	fcgi.Serve(l, mux)
+	fmt.Println("end")
 }
 
 func readToken(token interface{}, filename string) error {
