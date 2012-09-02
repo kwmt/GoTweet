@@ -9,6 +9,11 @@
 </head>
 <body>
 {{template "sub"}}
+<form action="/app/post" method="post">
+  <div><textarea name="content" rows="3" cols="60"></textarea></div>
+  <div><input type="submit" value="投稿する"></div>
+</form>
+
 <!--    <nav>
         <ul>
         <li><a href="home.html">Home</a></li>

@@ -47,6 +47,9 @@ type UserObject struct {
 	Screen_name string
 }
 
+
+var atoken oauth.AccessToken
+
 func handler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Fprint(w, "Hello, world")
 	flag.Parse()
@@ -58,7 +61,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 //	consumer.Debug(true)
 
-	var atoken oauth.AccessToken
 	err := readToken(&atoken, *atokenfile)
 	if err != nil {
 		log.Print("Couldn't read token:", err)
@@ -147,10 +149,31 @@ func callback(w http.ResponseWriter, r *http.Request){
 	return
 }
 
+func post(w http.ResponseWriter, r *http.Request){
+	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
+	content:=r.FormValue("content")
+	response, err3 := consumer.Post(
+		"http://api.twitter.com/1/statuses/update.json",
+		"",
+		map[string]string{
+		"key": "YgV7Rq8CyfvvfANEbFxZA",
+		"status": content,
+	},
+		&atoken)
+	if err3 != nil {
+		log.Fatal(err3)
+	}
+	defer response.Body.Close()
+	http.Redirect(w, r, "/app", http.StatusMovedPermanently)
+	return
+}
+
+
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/app/", handler)
 	mux.HandleFunc("/app/callback",callback)
+	mux.HandleFunc("/app/post", post)
 	l, _:= net.Listen("tcp", ":9000")
 	if l == nil {
 		fmt.Println("listener is nil")
