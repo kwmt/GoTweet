@@ -170,6 +170,10 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/app/", handler)
 	mux.HandleFunc("/app/callback",callback)
+	mux.Handle("/app/js/", http.StripPrefix("/app/js/", http.FileServer(http.Dir("js"))))
+	mux.Handle("/app/img/", http.StripPrefix("/app/img/", http.FileServer(http.Dir("img"))))
+	mux.Handle("/app/css/", http.StripPrefix("/app/css/", http.FileServer(http.Dir("css"))))
+
 	mux.HandleFunc("/app/post", post)
 	l, _:= net.Listen("tcp", ":9000")
 	if l == nil {
