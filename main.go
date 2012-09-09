@@ -91,7 +91,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		//fmt.Scanln(&code)
 		if *code == "" {
 			fmt.Println("You must supply a -code parameter to get an Access Token.")
-			
 			return
 		}
 		tok, err := consumer.AuthorizeToken(&rtoken, *code)
@@ -113,8 +112,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Fatalln(err)
 	}
-	//defer resp.Body.Close()
-	//io.Copy(os.Stdout, resp.Body)
+	defer resp.Body.Close()
 
 	w.Header().Add("Content-type", "text/html charset=utf-8")
 	body, err := ioutil.ReadAll(resp.Body)
@@ -124,15 +122,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tweets []TweetObject
-//	fmt.Fprintf(w, "%d%T\n", tweets,tweets)
-//	fmt.Fprintf(w, "%d%T\n", body,body)
-	
+
 	err2 := json.Unmarshal(body,&tweets)
 	if err2 != nil {
 		http.Error(w, err2.Error(), http.StatusInternalServerError)
 		log.Fatalln(err2)
 		return
 	}
+
 
 	t, err := template.ParseFiles("template/main.html", "template/tweet.html", "template/sub.html")
 	if err != nil {
