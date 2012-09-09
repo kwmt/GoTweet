@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	clientid     = flag.String("id", "", "OAuth Client ID")
-	clientsecret = flag.String("secret", "", "OAuth Client Secret")
+	clientid     = flag.String("id", "jdit7Chpc6RyZVNe3r2akA", "OAuth Client ID")
+	clientsecret = flag.String("secret", "W4XuOzeu1dbrWKelmbVzA81q0B9IvOq0tMxM9ZxAvY", "OAuth Client Secret")
 	rtokenfile   = flag.String("request", "request.json", "Request token file name")
 	atokenfile   = flag.String("access", "access.json", "Access token file name")
 	code         = flag.String("code", "", "Verification code")
