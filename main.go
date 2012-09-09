@@ -10,9 +10,9 @@ import (
 	"log"
 	//	"os"
 	"html/template"
-        "net"
+	"net"
 	"net/http"
-        "net/http/fcgi"
+	"net/http/fcgi"
 )
 
 var (
@@ -32,12 +32,12 @@ var provider = oauth.ServiceProvider{
 // 取得したいパラメータをstructで記述
 // 参考 https://dev.twitter.com/docs/api/1/get/statuses/mentions
 type TweetObject struct {
-	Created_at              string
-	Id_str                  string
-	Text                    string
-	Source                  string
-//	In_reply_to_user_id_str string
-	User                    UserObject // JSONオブジェクト内のオブジェクトをこのように定義する。
+	Created_at string
+	Id_str     string
+	Text       string
+	Source     string
+	//	In_reply_to_user_id_str string
+	User UserObject // JSONオブジェクト内のオブジェクトをこのように定義する。
 }
 
 // JSONオブジェク内のオブジェクト
@@ -46,7 +46,6 @@ type UserObject struct {
 	Name        string
 	Screen_name string
 }
-
 
 var atoken oauth.AccessToken
 
@@ -59,7 +58,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
 
-//	consumer.Debug(true)
+	//	consumer.Debug(true)
 
 	err := readToken(&atoken, *atokenfile)
 	if err != nil {
@@ -81,7 +80,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Visit this URL:", url)
 			fmt.Println("Then run this program again with -code=CODE")
 			fmt.Println("where CODE is the verification PIN provided by Twitter.")
-			http.Redirect(w,r,url,http.StatusFound)
+			http.Redirect(w, r, url, http.StatusFound)
 			return
 		}
 
@@ -104,7 +103,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		atoken = *tok
 	}
 
-//	const url = "http://api.twitter.com/1/statuses/mentions.json"
+	//	const url = "http://api.twitter.com/1/statuses/mentions.json"
 	const url = "http://api.twitter.com/1/statuses/user_timeline.json"
 	log.Print("GET ", url)
 	resp, err := consumer.Get(url, nil, &atoken)
@@ -123,13 +122,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	var tweets []TweetObject
 
-	err2 := json.Unmarshal(body,&tweets)
+	err2 := json.Unmarshal(body, &tweets)
 	if err2 != nil {
 		http.Error(w, err2.Error(), http.StatusInternalServerError)
 		log.Fatalln(err2)
 		return
 	}
-
 
 	t, err := template.ParseFiles("template/main.html", "template/tweet.html", "template/sub.html")
 	if err != nil {
@@ -140,22 +138,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func callback(w http.ResponseWriter, r *http.Request){
+func callback(w http.ResponseWriter, r *http.Request) {
 	*code = r.FormValue("oauth_verifier")
-	http.Redirect(w,r,"/app",http.StatusMovedPermanently)
+	http.Redirect(w, r, "/app", http.StatusMovedPermanently)
 	return
 }
 
-func post(w http.ResponseWriter, r *http.Request){
+func post(w http.ResponseWriter, r *http.Request) {
 	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
-	content:=r.FormValue("content")
+	content := r.FormValue("content")
 	response, err3 := consumer.Post(
 		"http://api.twitter.com/1/statuses/update.json",
 		"",
 		map[string]string{
-		"key": "YgV7Rq8CyfvvfANEbFxZA",
-		"status": content,
-	},
+			"key":    "YgV7Rq8CyfvvfANEbFxZA",
+			"status": content,
+		},
 		&atoken)
 	if err3 != nil {
 		log.Fatal(err3)
@@ -165,17 +163,16 @@ func post(w http.ResponseWriter, r *http.Request){
 	return
 }
 
-
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/app/", handler)
-	mux.HandleFunc("/app/callback",callback)
+	mux.HandleFunc("/app/callback", callback)
 	mux.Handle("/app/js/", http.StripPrefix("/app/js/", http.FileServer(http.Dir("js"))))
 	mux.Handle("/app/img/", http.StripPrefix("/app/img/", http.FileServer(http.Dir("img"))))
 	mux.Handle("/app/css/", http.StripPrefix("/app/css/", http.FileServer(http.Dir("css"))))
 
 	mux.HandleFunc("/app/post", post)
-	l, _:= net.Listen("tcp", ":9000")
+	l, _ := net.Listen("tcp", ":9000")
 	if l == nil {
 		fmt.Println("listener is nil")
 		return
