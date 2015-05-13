@@ -43,14 +43,18 @@ type TweetObject struct {
 // JSONオブジェク内のオブジェクト
 type UserObject struct {
 	Id_str      string
-	Name        string
+	Profile_image_url string
 	Screen_name string
+	Access_token string
+	Access_token_secret string
 }
 
 var atoken oauth.AccessToken
+var rtoken oauth.RequestToken
+var me = new(UserObject)
+//access_token は毎回取る必要がある。
+func login(w http.ResponseWriter, r *http.Request) {
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprint(w, "Hello, world")
 	flag.Parse()
 	if *clientid == "" || *clientsecret == "" {
 		flag.Usage()
@@ -58,53 +62,31 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
 
-	//	consumer.Debug(true)
-
-	err := readToken(&atoken, *atokenfile)
+	connectDb()
+	err := existUser(me)
 	if err != nil {
-		log.Print("Couldn't read token:", err)
-
-		var rtoken oauth.RequestToken
-		err := readToken(&rtoken, *rtokenfile)
-		if err != nil {
-			log.Print("Couldn't read token:", err)
-			log.Print("Getting Request Token")
-			rtoken, url, err := consumer.GetRequestTokenAndUrl("http://localhost/app/callback")
-			if err != nil {
-				log.Fatal(err)
-			}
-			err = writeToken(rtoken, *rtokenfile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Println("Visit this URL:", url)
-			fmt.Println("Then run this program again with -code=CODE")
-			fmt.Println("where CODE is the verification PIN provided by Twitter.")
-			http.Redirect(w, r, url, http.StatusFound)
-			return
-		}
-
-		log.Print("Getting Access Token")
-		fmt.Println("(3) Enter that verification code here: ")
-		//*code =""
-		//fmt.Scanln(&code)
-		if *code == "" {
-			fmt.Println("You must supply a -code parameter to get an Access Token.")
-			return
-		}
-		tok, err := consumer.AuthorizeToken(&rtoken, *code)
+		//DBに格納
+		fmt.Println("DBに格納")
+		//var rtoken oauth.RequestToken
+		rtoken, url, err := consumer.GetRequestTokenAndUrl("http://localhost/app/callback")
+		fmt.Println("rtoken:",rtoken)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = writeToken(tok, *atokenfile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		atoken = *tok
-	}
+		http.Redirect(w, r, url, http.StatusFound)
+		return
+	}	
+
+}
+
+
+func tl(w http.ResponseWriter, r *http.Request){
+	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
+
 
 	//	const url = "http://api.twitter.com/1/statuses/mentions.json"
 	const url = "http://api.twitter.com/1/statuses/user_timeline.json"
+	//const url = "http://api.twitter.com/1/account/verify_credentials.json"
 	log.Print("GET ", url)
 	resp, err := consumer.Get(url, nil, &atoken)
 	if err != nil {
@@ -115,6 +97,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-type", "text/html charset=utf-8")
 	body, err := ioutil.ReadAll(resp.Body)
+	fmt.Println("body")
+	fmt.Println(string(body))
+	
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Fatalln(err)
@@ -123,25 +108,20 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	var tweets []TweetObject
 
 	err2 := json.Unmarshal(body, &tweets)
+	fmt.Println("tweets")
+	//fmt.Println(tweets[0].Id_str)
 	if err2 != nil {
 		http.Error(w, err2.Error(), http.StatusInternalServerError)
 		log.Fatalln(err2)
 		return
 	}
 
-	t, err := template.ParseFiles("template/main.html", "template/tweet.html", "template/sub.html")
+	t, err := template.ParseFiles("template/index.html", "template/tweet.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	t.Execute(w, tweets)
-
-}
-
-func callback(w http.ResponseWriter, r *http.Request) {
-	*code = r.FormValue("oauth_verifier")
-	http.Redirect(w, r, "/app", http.StatusMovedPermanently)
-	return
 }
 
 func post(w http.ResponseWriter, r *http.Request) {
@@ -163,14 +143,96 @@ func post(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func logout(w http.ResponseWriter, r *http.Request) {
+	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
+
+	const url = "https://api.twitter.com/1/account/end_session.json"
+	fmt.Print(w, "logoutしました")
+
+	log.Print("Delete ", url)
+	resp, err := consumer.Delete(url, nil, &atoken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+	defer resp.Body.Close()
+
+}
+
+func callback(w http.ResponseWriter, r *http.Request) {
+	//consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
+	fmt.Println("callback")
+	fmt.Println(r)
+	*code = r.FormValue("oauth_verifier")
+
+	http.Redirect(w, r, "/app", http.StatusMovedPermanently)
+	return
+}
+
+
+func index(w http.ResponseWriter, r *http.Request){
+	consumer := oauth.NewConsumer(*clientid, *clientsecret, provider)
+	const url = "http://api.twitter.com/1/account/verify_credentials.json"
+	log.Print("GET ", url)
+	resp, err := consumer.Get(url, nil, &atoken)
+	if err != nil {
+		
+		t, err := template.ParseFiles("template/index.html","template/main.html", "template/tweet.html", "template/sub.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		t.Execute(w, me)
+		return
+		
+		
+	}
+	
+	tok, err := consumer.AuthorizeToken(&rtoken, *code)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	atoken = *tok
+	defer resp.Body.Close()
+	w.Header().Add("Content-type", "text/html charset=utf-8")
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+	err2 := json.Unmarshal(body, &me)
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusInternalServerError)
+		log.Fatalln(err2)
+		return
+	}
+
+	insertUser(me, &atoken)
+
+	t, err := template.ParseFiles("template/index.html","template/main.html", "template/tweet.html", "template/sub.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	t.Execute(w, me)
+
+
+//	tl(w,r)
+
+
+}
+
+
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/app/", handler)
+	mux.HandleFunc("/app/", index)
+	mux.HandleFunc("/app/login", login)
 	mux.HandleFunc("/app/callback", callback)
 	mux.Handle("/app/js/", http.StripPrefix("/app/js/", http.FileServer(http.Dir("js"))))
 	mux.Handle("/app/img/", http.StripPrefix("/app/img/", http.FileServer(http.Dir("img"))))
 	mux.Handle("/app/css/", http.StripPrefix("/app/css/", http.FileServer(http.Dir("css"))))
-
+	mux.HandleFunc("/app/logout", logout)
 	mux.HandleFunc("/app/post", post)
 	l, _ := net.Listen("tcp", ":9000")
 	if l == nil {

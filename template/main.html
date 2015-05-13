@@ -1,27 +1,48 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<style type="text/css">
-    div.tl  {width:600px;}
-    table,td {border: solid ; border-collapse: collapse;}
-</STYLE>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1.0"/>
+
+<!--<link rel="stylesheet" type="text/css" href="./css/top.css">-->
+<link href="css/bootstrap.min.css" rel="stylesheet">
+
+<link href="css/bootstrap-responsive.css" rel="stylesheet">
 </head>
 <body>
-{{template "sub"}}
+<script src="http://code.jquery.com/jquery-1.8.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+
+
+twitter
 <form action="/app/post" method="post">
-  <div><textarea name="content" rows="3" cols="60"></textarea></div>
+  <div><textarea name="content" rows="3" ></textarea></div>
   <div><input type="submit" value="投稿する"></div>
 </form>
 
-<!--    <nav>
-        <ul>
-        <li><a href="home.html">Home</a></li>
-        <li><a href="tweet.html">Tweet</a></li>
-        <li><a href="mention.html">Mention</a></li>
-        </uL>
-    </nav>
--->
+<div class="tabbable tabs-below">
+  <div class="tab-content">
+    <div class="tab-pane active" id="A">
+      <p>
 {{template "content" .}}
+section A</p>
+    </div>
+    <div class="tab-pane" id="B">
+      <p>
+
+</p>
+    </div>
+    <div class="tab-pane" id="C">
+      <p>section C</p>
+    </div>
+  </div>
+  <ul class="nav nav-tabs">
+    <li class="active"><a href="#A" data-toggle="tab">Section 1</a></li>
+    <li><a href="#B" data-toggle="tab">Section 2</a></li>
+    <li><a href="#C" data-toggle="tab">Section 3</a></li>
+  </ul>
+</div>
+
+
 </body>
 </html>

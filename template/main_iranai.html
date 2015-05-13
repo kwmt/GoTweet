@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style type="text/css">
+    div.tl  {width:600px;}
+    table,td {border: solid ; border-collapse: collapse;}
+</STYLE>
+</head>
+<body>
+{{template "sub"}}
+<form action="/app/post" method="post">
+  <div><textarea name="content" rows="3" cols="60"></textarea></div>
+  <div><input type="submit" value="投稿する"></div>
+</form>
+
+<!--    <nav>
+        <ul>
+        <li><a href="home.html">Home</a></li>
+        <li><a href="tweet.html">Tweet</a></li>
+        <li><a href="mention.html">Mention</a></li>
+        </uL>
+    </nav>
+-->
+{{template "content" .}}
+</body>
+</html>
